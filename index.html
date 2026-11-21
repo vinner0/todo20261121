@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>To-Do Tracker</title>
+<style>
+  :root {
+    color-scheme: light;
+    --accent: #6366f1; --accent-dark: #4f46e5;
+    --text: #1e293b; --muted: #94a3b8; --line: #e2e8f0;
+    --card: #ffffff; --input: #f8fafc; --th: #f1f5f9; --th-text: #64748b; --hover: #f8f7ff; --icon-hover: #eef2ff;
+    --shadow: 0 4px 20px rgba(99,102,241,.12);
+    --bg: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 50%, #fdf2f8 100%);
+    --high-bg: #fee2e2; --high: #b91c1c; --med-bg: #fef3c7; --med: #b45309; --low-bg: #dcfce7; --low: #15803d;
+    --overdue: #dc2626;
+  }
+  :root[data-theme=dark] {
+    color-scheme: dark;
+    --accent: #818cf8; --accent-dark: #6366f1;
+    --text: #e2e8f0; --muted: #64748b; --line: #334155;
+    --card: #1e293b; --input: #0f172a; --th: #273449; --th-text: #94a3b8; --hover: #243047; --icon-hover: #334155;
+    --shadow: 0 4px 24px rgba(0,0,0,.4);
+    --bg: linear-gradient(135deg, #0b1020 0%, #151a33 50%, #1f1633 100%);
+    --high-bg: rgba(248,113,113,.18); --high: #fca5a5; --med-bg: rgba(251,191,36,.18); --med: #fcd34d; --low-bg: rgba(74,222,128,.18); --low: #86efac;
+    --overdue: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--text);
+         margin: 0; min-height: 100vh; background: var(--bg); background-attachment: fixed;
+         padding: max(1.5rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+                  max(2rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+         -webkit-text-size-adjust: 100%; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  header { position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: .75rem; min-height: 44px; }
+  h1 { font-size: 1.9rem; margin: 0; text-align: center; color: #B22222; }
+  #themeBtn { position: absolute; right: 0; top: 50%; transform: translateY(-50%); background: var(--card); box-shadow: var(--shadow); font-size: 1.3rem; width: 44px; height: 44px; padding: 0; border-radius: 50%; }
+  form { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: .75rem; padding: .6rem;
+         background: var(--card); border-radius: 14px; box-shadow: var(--shadow); }
+  input[type=text], input[type=search], input:not([type]), input[type=date], select {
+    padding: 10px 12px; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; font-size: 16px;
+    background: var(--input); color: var(--text); font-family: inherit; }
+  #item { flex: 1 1 200px; }
+  input:focus, select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  button { padding: 10px 16px; min-height: 44px; border: 0; border-radius: 10px; cursor: pointer; font-size: 1rem; color: var(--text); }
+  #submitBtn { background: var(--accent-dark); color: #fff; font-weight: 600; transition: background .15s; }
+  #submitBtn:hover { background: var(--accent); }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--card);
+          border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); }
+  th { background: var(--th); font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--th-text); }
+  th, td { padding: 12px 14px; text-align: left; border-bottom: 1px solid var(--line); }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: var(--hover); }
+  td button { background: transparent; padding: 6px 8px; min-height: 40px; min-width: 40px; font-size: 1.15rem; }
+  td button:hover { background: var(--icon-hover); }
+  input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--accent-dark); cursor: pointer; }
+  .badge { padding: 3px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+  .p-High { background: var(--high-bg); color: var(--high); }
+  .p-Medium { background: var(--med-bg); color: var(--med); }
+  .p-Low { background: var(--low-bg); color: var(--low); }
+  .overdue { color: var(--overdue); font-weight: 600; }
+  tr.done td { text-decoration: line-through; color: var(--muted); }
+  tr.done .badge { opacity: .5; }
+  .empty { text-align: center; color: var(--muted); padding: 2rem 0; }
+  .summary { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .chip { background: var(--card); box-shadow: var(--shadow); border-radius: 999px; padding: 8px 14px; min-height: 40px; font-size: .9rem; }
+  .chip b { margin-left: 6px; }
+  .chip.warn:not(.active) b { color: var(--overdue); }
+  .chip.active { background: var(--accent-dark); color: #fff; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .toolbar #search { flex: 1 1 200px; }
+  .toolbar button { background: var(--card); box-shadow: var(--shadow); }
+  .toolbar button:disabled { opacity: .45; cursor: default; }
+
+  /* Phone layout: each row becomes a card */
+  @media (max-width: 640px) {
+    h1 { font-size: 1.6rem; }
+    form { display: grid; grid-template-columns: 1fr 1fr; }
+    form > * { width: 100%; min-width: 0; }
+    #item { grid-column: 1 / -1; }
+    table, tbody { display: block; background: transparent; box-shadow: none; border-radius: 0; overflow: visible; }
+    thead { display: none; }
+    tbody tr { display: grid; grid-template-columns: auto 1fr auto; column-gap: 12px; align-items: center;
+               background: var(--card); border-radius: 14px; box-shadow: var(--shadow);
+               padding: 12px 14px; margin-bottom: 12px; }
+    tbody tr:hover td { background: transparent; }
+    td { padding: 0; border: 0; }
+    td:nth-child(1) { grid-column: 1; grid-row: 1; }
+    td:nth-child(2) { grid-column: 2; grid-row: 1; font-weight: 600; font-size: 1.05rem; word-break: break-word; }
+    td:nth-child(6) { grid-column: 3; grid-row: 1; white-space: nowrap; }
+    td:nth-child(3), td:nth-child(4), td:nth-child(5) { grid-column: 2 / -1; font-size: .9rem; margin-top: 6px; }
+    td:nth-child(4)::before { content: "Due: "; color: var(--muted); font-weight: 400; }
+    td:nth-child(5)::before { content: "From: "; color: var(--muted); }
+    td:empty { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>To-Do Tracker</h1>
+  <button id="themeBtn" type="button" title="Switch light/dark" aria-label="Switch light/dark"></button>
+</header>
+<form id="form">
+  <input id="item" placeholder="Item" required>
+  <select id="priority">
+    <option>High</option><option selected>Medium</option><option>Low</option>
+  </select>
+  <input id="deadline" type="date">
+  <input id="requestedBy" placeholder="Requested by">
+  <button id="submitBtn">Add</button>
+</form>
+<div class="summary" id="summary"></div>
+<div class="toolbar">
+  <input id="search" type="search" placeholder="Search item or requester">
+  <select id="prioFilter">
+    <option value="">All priorities</option><option>High</option><option>Medium</option><option>Low</option>
+  </select>
+  <button type="button" id="exportBtn" title="Download a backup file">⬇️ Export</button>
+  <button type="button" id="importBtn" title="Load items from a backup file">⬆️ Import</button>
+  <button type="button" id="clearBtn">Clear completed</button>
+  <input id="importFile" type="file" accept=".json,application/json" hidden>
+</div>
+<table>
+  <thead><tr><th>Done</th><th>Item</th><th>Priority</th><th>Deadline</th><th>Requested by</th><th></th></tr></thead>
+  <tbody id="list"></tbody>
+</table>
+<p class="empty" id="empty" hidden></p>
+</div>
+
+<script>
+/* Storage can be blocked (e.g. private browsing), so never let it break the page */
+function store(key, val) { try { if (val === undefined) return localStorage.getItem(key); localStorage.setItem(key, val); } catch (e) {} }
+
+let items = JSON.parse(store('items') || '[]');
+const rank = { High: 0, Medium: 1, Low: 2 };
+let editItem = null;
+let view = 'all';
+
+/* Local date as YYYY-MM-DD (toISOString would give the UTC date, a day behind in Singapore before 8am) */
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+/* Clear the form; the deadline defaults to today */
+function resetForm() {
+  document.getElementById('form').reset();
+  document.getElementById('deadline').value = todayStr();
+}
+resetForm();
+
+function save() { store('items', JSON.stringify(items)); }
+
+/* Theme: saved choice, otherwise follow the device setting */
+const themeBtn = document.getElementById('themeBtn');
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  themeBtn.textContent = t === 'dark' ? '☀️' : '🌙';
+  store('theme', t);
+}
+setTheme(store('theme') ||
+  (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+themeBtn.onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+
+function render() {
+  const today = todayStr();
+  items.sort((a, b) =>
+    (!!a.done - !!b.done) || (a.deadline || '9999').localeCompare(b.deadline || '9999') || rank[a.priority] - rank[b.priority]);
+
+  const isOverdue = it => !it.done && it.deadline && it.deadline < today;
+  const isToday = it => !it.done && it.deadline === today;
+  const counts = {
+    all: items.length,
+    open: items.filter(it => !it.done).length,
+    overdue: items.filter(isOverdue).length,
+    today: items.filter(isToday).length
+  };
+  const chips = [['all', 'All', ''], ['open', 'Open', ''], ['overdue', 'Overdue', 'warn'], ['today', 'Due today', 'warn']];
+  document.getElementById('summary').innerHTML = chips.map(([v, label, cls]) =>
+    '<button type="button" class="chip ' + cls + (view === v ? ' active' : '') + '" data-view="' + v + '">' +
+    label + '<b>' + counts[v] + '</b></button>').join('');
+  document.getElementById('clearBtn').disabled = items.length === counts.open;
+
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const pr = document.getElementById('prioFilter').value;
+  const shown = items.filter(it =>
+    (view === 'all' || (view === 'open' && !it.done) || (view === 'overdue' && isOverdue(it)) || (view === 'today' && isToday(it))) &&
+    (!pr || it.priority === pr) &&
+    (!q || (it.item + ' ' + it.requestedBy).toLowerCase().includes(q)));
+  const empty = document.getElementById('empty');
+  empty.hidden = shown.length > 0;
+  empty.textContent = items.length ? 'No items match.' : 'No items yet. Add your first one above.';
+
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  shown.forEach(it => {
+    const tr = document.createElement('tr');
+    const overdue = isOverdue(it);
+    if (it.done) tr.className = 'done';
+    const cbTd = document.createElement('td');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = !!it.done;
+    cb.setAttribute('aria-label', 'Mark done');
+    cb.onchange = () => { it.done = cb.checked; save(); render(); };
+    cbTd.appendChild(cb);
+    tr.appendChild(cbTd);
+    [it.item, it.priority, it.deadline, it.requestedBy].forEach((v, c) => {
+      const td = document.createElement('td');
+      if (c === 1) {
+        const b = document.createElement('span');
+        b.className = 'badge p-' + v;
+        b.textContent = v;
+        td.appendChild(b);
+      } else td.textContent = v;
+      if (c === 2 && overdue && !it.done) td.className = 'overdue';
+      tr.appendChild(td);
+    });
+    const td = document.createElement('td');
+    const edit = document.createElement('button');
+    edit.textContent = '✏️';
+    edit.title = 'Edit';
+    edit.setAttribute('aria-label', 'Edit');
+    edit.onclick = () => {
+      document.getElementById('item').value = it.item;
+      document.getElementById('priority').value = it.priority;
+      document.getElementById('deadline').value = it.deadline;
+      document.getElementById('requestedBy').value = it.requestedBy;
+      editItem = it;
+      document.getElementById('submitBtn').textContent = 'Save';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.getElementById('item').focus({ preventScroll: true });
+    };
+    const del = document.createElement('button');
+    del.textContent = '🗑️';
+    del.title = 'Delete';
+    del.setAttribute('aria-label', 'Delete');
+    del.onclick = () => {
+      if (!confirm('Delete "' + it.item + '"?')) return;
+      items.splice(items.indexOf(it), 1);
+      if (editItem === it) {
+        editItem = null;
+        document.getElementById('submitBtn').textContent = 'Add';
+        resetForm();
+      }
+      save(); render();
+    };
+    td.appendChild(edit);
+    td.appendChild(del);
+    tr.appendChild(td);
+    list.appendChild(tr);
+  });
+}
+
+document.getElementById('form').onsubmit = e => {
+  e.preventDefault();
+  const data = {
+    item: document.getElementById('item').value,
+    priority: document.getElementById('priority').value,
+    deadline: document.getElementById('deadline').value,
+    requestedBy: document.getElementById('requestedBy').value
+  };
+  if (!editItem) items.push(data);
+  else Object.assign(editItem, data);
+  editItem = null;
+  document.getElementById('submitBtn').textContent = 'Add';
+  save(); render();
+  resetForm();
+};
+
+/* Summary chips, search and priority filter */
+document.getElementById('summary').onclick = e => {
+  const b = e.target.closest('[data-view]');
+  if (b) { view = b.dataset.view; render(); }
+};
+document.getElementById('search').oninput = render;
+document.getElementById('prioFilter').onchange = render;
+
+/* Clear completed */
+document.getElementById('clearBtn').onclick = () => {
+  const n = items.filter(it => it.done).length;
+  if (!n || !confirm('Delete ' + n + ' completed item(s)? This cannot be undone.')) return;
+  if (editItem && editItem.done) {
+    editItem = null;
+    document.getElementById('submitBtn').textContent = 'Add';
+    resetForm();
+  }
+  items = items.filter(it => !it.done);
+  save(); render();
+};
+
+/* Export / Import a JSON backup */
+document.getElementById('exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify(items, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'todo-backup-' + todayStr() + '.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+};
+const importFile = document.getElementById('importFile');
+document.getElementById('importBtn').onclick = () => importFile.click();
+importFile.onchange = () => {
+  const f = importFile.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const data = JSON.parse(r.result);
+      if (!Array.isArray(data)) throw new Error('not a list');
+      let added = 0, skipped = 0;
+      data.forEach(d => {
+        if (!d || typeof d.item !== 'string' || !d.item.trim()) { skipped++; return; }
+        const n = {
+          item: d.item.trim(),
+          priority: d.priority in rank ? d.priority : 'Medium',
+          deadline: /^\d{4}-\d{2}-\d{2}$/.test(d.deadline) ? d.deadline : '',
+          requestedBy: typeof d.requestedBy === 'string' ? d.requestedBy : '',
+          done: d.done === true
+        };
+        const dup = items.some(x => x.item === n.item && x.priority === n.priority &&
+          x.deadline === n.deadline && x.requestedBy === n.requestedBy);
+        if (dup) skipped++; else { items.push(n); added++; }
+      });
+      save(); render();
+      alert('Imported ' + added + ' item(s). Skipped ' + skipped + ' duplicate or invalid.');
+    } catch (err) { alert('That file is not a valid backup.'); }
+  };
+  r.readAsText(f);
+  importFile.value = '';
+};
+
+render();
+</script>
+</body>
+</html>
